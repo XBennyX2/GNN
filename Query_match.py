@@ -8,3 +8,5 @@ from subgraph_matching.train import build_model
 from subgraph_matching.config import parse_encoder
 from common import utils
 
+THRESHOLD = 0.5  
+
