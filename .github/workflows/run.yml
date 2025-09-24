@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout the repository
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -22,19 +22,19 @@ jobs:
         with:
           python-version: "3.8"
 
-      # 3️⃣ Install PyTorch + PyG CPU and dependencies
-      - name: Install PyTorch, PyG, and other dependencies
+      # 3️⃣ Install PyTorch + PyG CPU + all requirements
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           # Install PyTorch CPU
           pip install torch==2.4.1+cpu torchvision==0.19.1+cpu torchaudio==2.4.1+cpu --index-url https://download.pytorch.org/whl/cpu
-          # Install PyG CPU wheels
+          # Install PyTorch Geometric CPU wheels
           pip install torch-scatter -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
           pip install torch-sparse -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
           pip install torch-cluster -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
           pip install torch-spline-conv -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
-          # Install PyG main package and other Python packages
-          pip install torch-geometric deepsnap networkx matplotlib tqdm
+          # Install main PyG + deepsnap and all other requirements
+          pip install torch-geometric deepsnap matplotlib networkx scipy test_tube tqdm scikit-learn
 
       # 4️⃣ Prepare output directories
       - name: Prepare output directories
