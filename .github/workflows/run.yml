@@ -22,19 +22,13 @@ jobs:
         with:
           python-version: "3.8"
 
-      # 3️⃣ Install PyTorch + PyG CPU + all requirements
+      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install PyTorch CPU
-          pip install torch==2.4.1+cpu torchvision==0.19.1+cpu torchaudio==2.4.1+cpu --index-url https://download.pytorch.org/whl/cpu
-          # Install PyTorch Geometric CPU wheels
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
-          pip install torch-sparse -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
-          pip install torch-cluster -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
-          pip install torch-spline-conv -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
-          # Install main PyG + deepsnap and all other requirements
-          pip install torch-geometric deepsnap matplotlib networkx scipy test_tube tqdm scikit-learn
+          pip install -r requirements.txt
+          # Install torch geometric dependencies
+          pip install torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
 
       # 4️⃣ Prepare output directories
       - name: Prepare output directories
@@ -49,6 +43,7 @@ jobs:
             --query_path examples/query_graph.pkl \
             --target_path examples/target_graph.pkl \
             --model_path ckpt/model.pt \
+            --method_type order \
             --output_path results/query_result.txt
 
       # 6️⃣ Display the subgraph match result in Actions log

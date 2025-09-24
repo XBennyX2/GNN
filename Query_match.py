@@ -1,22 +1,29 @@
 import argparse
-import os
 import pickle
-import numpy as np
 import networkx as nx
-import torch
-import matplotlib.pyplot as plt
-
 from subgraph_matching.train import build_model
 from subgraph_matching.alignment import gen_alignment_matrix
+import numpy as np
+import matplotlib.pyplot as plt
+import os
 
 def main():
-    parser = argparse.ArgumentParser(description="Query subgraph matching")
-    parser.add_argument("--query_path", type=str, required=True, help="Path to query graph pickle")
-    parser.add_argument("--target_path", type=str, required=True, help="Path to target graph pickle")
-    parser.add_argument("--model_path", type=str, default="ckpt/model.pt", help="Path to pretrained model")
-    parser.add_argument("--method_type", type=str, default="order", choices=["order", "mlp"], help="Model type")
-    parser.add_argument("--output_path", type=str, default="results/query_result.txt", help="Path to save True/False result")
+    parser = argparse.ArgumentParser(description='Subgraph Query Match')
+    parser.add_argument('--query_path', type=str, default="examples/query_graph.pkl",
+                        help='Path to query graph pickle')
+    parser.add_argument('--target_path', type=str, default="examples/target_graph.pkl",
+                        help='Path to target graph pickle')
+    parser.add_argument('--model_path', type=str, default="ckpt/model.pt",
+                        help='Path to pretrained model checkpoint')
+    parser.add_argument('--method_type', type=str, default="order",
+                        help='Method type: "order" or "mlp"')
+    parser.add_argument('--output_path', type=str, default="results/query_result.txt",
+                        help='File to save query result')
     args = parser.parse_args()
+
+    # Ensure output directories exist
+    os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
+    os.makedirs("plots", exist_ok=True)
 
     # Load graphs
     with open(args.query_path, "rb") as f:
@@ -24,33 +31,31 @@ def main():
     with open(args.target_path, "rb") as f:
         target = pickle.load(f)
 
-    # Ensure output directories exist
-    os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
-    os.makedirs("plots", exist_ok=True)
+    # Build model with proper args
+    args = parser.parse_args()
+    model = build_model(args)
 
-    # Load pretrained model
-    model = build_model(None)  # build_model supports loading default config
-    checkpoint = torch.load(args.model_path, map_location="cpu")
-    model.load_state_dict(checkpoint)
-    model.eval()
 
-    # Compute alignment matrix
+    # Generate alignment matrix
     mat = gen_alignment_matrix(model, query, target, method_type=args.method_type)
 
-    # Save alignment matrix plot
-    plt.imshow(mat, interpolation="nearest")
-    plt.colorbar()
-    plt.savefig("plots/alignment_matrix.png")
-    print("Saved alignment matrix plot to plots/alignment_matrix.png")
-
-    # Simple threshold to decide subgraph existence
-    threshold = 0.5  # adjust if needed
-    is_subgraph = np.any(mat > threshold)
+    # Decide subgraph match (example: max confidence > threshold)
+    threshold = 0.5
+    is_subgraph = np.max(mat) > threshold
 
     # Save result
     with open(args.output_path, "w") as f:
         f.write(str(is_subgraph))
-    print(f"Query result saved to {args.output_path}: {is_subgraph}")
+
+    # Save plot
+    plt.imshow(mat, interpolation="nearest")
+    plt.colorbar()
+    plt.title("Query vs Target Alignment Matrix")
+    plt.savefig("plots/query_alignment.png")
+    plt.close()
+
+    print(f"Subgraph match result: {is_subgraph}")
+    print(f"Alignment matrix plot saved in plots/query_alignment.png")
 
 if __name__ == "__main__":
     main()
