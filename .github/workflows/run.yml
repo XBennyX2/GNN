@@ -1,4 +1,4 @@
-name: Run Decoder
+name: Subgraph Query Match Workflow
 
 on:
   push:
@@ -8,139 +8,54 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-decoder:
+  run-query-match:
     runs-on: ubuntu-latest
+
     steps:
+      # 1️⃣ Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Cache Docker layers
-        uses: actions/cache@v3
+      # 2️⃣ Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
+          python-version: "3.9"
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          load: true
-          tags: decoder-image:latest
-          cache-from: |
-            type=local,src=/tmp/.buildx-cache
-          cache-to: |
-            type=local,dest=/tmp/.buildx-cache-new,mode=max
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Move cache
+      # 4️⃣ Prepare output directories
+      - name: Prepare output directories
         run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          mkdir -p results
+          mkdir -p plots
 
-      - name: Create output directories
+      # 5️⃣ Run Query_match.py with pretrained model and example graphs
+      - name: Run Query Match
         run: |
-          mkdir -p ${{ github.workspace }}/plots/cluster
-          mkdir -p ${{ github.workspace }}/results
-          chmod -R 777 ${{ github.workspace }}/plots
-          chmod -R 777 ${{ github.workspace }}/results
+          python Query_match.py \
+            --query_path examples/query_graph.pkl \
+            --target_path examples/target_graph.pkl \
+            --model_path ckpt/model.pt \
+            --output_path results/query_result.txt
 
-      - name: Check available processors and usage percentage
-        id: cpu-check
+      # 6️⃣ Display the subgraph match result in Actions log
+      - name: Show query result
         run: |
-          TOTAL_CPUS=$(nproc)
-          USED_CPUS=4
-          PERCENT_USED=$(( 100 * USED_CPUS / TOTAL_CPUS ))
-          echo "Total available processors: $TOTAL_CPUS"
-          echo "Processors used for decoder: $USED_CPUS"
-          echo "Percent of processors used: ${PERCENT_USED}%"
-          echo "total_cpus=$TOTAL_CPUS" >> $GITHUB_OUTPUT
-          echo "percent_used=$PERCENT_USED" >> $GITHUB_OUTPUT
+          echo "Subgraph Query Result:"
+          cat results/query_result.txt || echo "Result file not found"
 
-      - name: Run decoder in Docker container
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/app \
-            -e PYTHONUNBUFFERED=1 \
-            decoder-image:latest \
-            bash -c "
-              set -e
-              echo 'Starting decoder run...'
-              python -m subgraph_mining.decoder \
-                --dataset=directed.pkl \
-                --n_trials=200 \
-                --node_anchored \
-                --out_path=/app/results/patterns.pkl \
-                --graph_type=directed
-              echo 'Checking output directories...'
-              ls -la /app/plots/cluster
-              ls -la /app/results
-              "
-      # - name: Run pattern counter in Docker container
-      #   run: |
-      #     docker run --rm \
-      #       -v ${{ github.workspace }}:/app \
-      #       -e PYTHONUNBUFFERED=1 \
-      #       decoder-image:latest \
-      #       bash -c "
-      #         set -e
-      #         export PYTHONPATH=/app
-      #         echo 'Running pattern counter...'
-      #         python -m analyze.count_patterns \
-      #           --dataset=graph.pkl \
-      #           --queries_path=results/patterns.pkl \
-      #           --out_path=results/ \
-      #           --node_anchored \
-      #           --preserve_labels
-      #         echo 'Counting completed.'
-      #         ls -la /app/results
-      #       "
-      - name: Run matcher in Docker container
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/app \
-            -e PYTHONUNBUFFERED=1 \
-            decoder-image:latest \
-            bash -c "
-              set -e
-              echo 'Starting matcher run on custom gene graph...'
-              python -m subgraph_matching.train \
-                --dataset=graph \
-                --graph_pkl_path=graph.pkl \
-                --node_anchored \
-                --batch_size 16 \
-                --val_size 128
-              echo 'Checking output directories...'
-              ls -la /app/results
-              ls -la /app/plots
-            "
-      - name: Check for generated files
-        run: |
-          echo "Checking plots directory:"
-          ls -R plots/ || echo "No plots directory found"
-          echo "Checking results directory:"
-          ls -R results/ || echo "No results directory found"
-
-      - name: Upload plots as artifact
-        if: always()
+      # 7️⃣ Upload results and plots as artifacts
+      - name: Upload results and plots
         uses: actions/upload-artifact@v4
         with:
-          name: decoder-plots
+          name: query-match-artifacts
           path: |
-            plots/
             results/
+            plots/
           retention-days: 7
           if-no-files-found: warn
-
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: decoder-logs
-          path: |
-            *.log
-            *.err
-          if-no-files-found: ignore
