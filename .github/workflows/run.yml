@@ -22,16 +22,19 @@ jobs:
         with:
           python-version: "3.8"
 
-      # 3️⃣ Install PyTorch, PyG, and other dependencies
-      - name: Install PyTorch + PyG + dependencies
+      # 3️⃣ Install PyTorch + PyG CPU and dependencies
+      - name: Install PyTorch, PyG, and other dependencies
         run: |
           python -m pip install --upgrade pip
           # Install PyTorch CPU
           pip install torch==2.4.1+cpu torchvision==0.19.1+cpu torchaudio==2.4.1+cpu --index-url https://download.pytorch.org/whl/cpu
-          # Install PyG dependencies with CPU wheels
-          pip install torch_scatter==2.1.2+cpu torch_sparse==0.6.18+cpu torch_cluster==1.6.0+cpu torch_spline_conv==1.2.2+cpu torch_geometric==2.6.1
-          # Install other dependencies
-          pip install deepsnap networkx matplotlib tqdm
+          # Install PyG CPU wheels
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
+          pip install torch-sparse -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
+          pip install torch-cluster -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
+          pip install torch-spline-conv -f https://data.pyg.org/whl/torch-2.4.1+cpu.html
+          # Install PyG main package and other Python packages
+          pip install torch-geometric deepsnap networkx matplotlib tqdm
 
       # 4️⃣ Prepare output directories
       - name: Prepare output directories
