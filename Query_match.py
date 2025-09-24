@@ -21,3 +21,25 @@ def query_subgraph(model, query, target, method_type="order", visualize=False):
         print("Saved query alignment plot at plots/query_alignment.png")
     return exists
 
+def main():
+    parser = argparse.ArgumentParser()
+    utils.parse_optimizer(parser)
+    parse_encoder(parser)
+    parser.add_argument("--query_path", required=True, help="Query graph pickle")
+    parser.add_argument("--target_path", required=True, help="Target graph pickle")
+    parser.add_argument("--method_type", default="order", help="order/mlp")
+    parser.add_argument("--visualize", action="store_true")
+    args = parser.parse_args()
+    args.test = True
+
+    with open(args.query_path, "rb") as f:
+        query = pickle.load(f)
+    with open(args.target_path, "rb") as f:
+        target = pickle.load(f)
+
+    model = build_model(args)
+    result = query_subgraph(model, query, target, args.method_type, args.visualize)
+    print("Query exists as subgraph:", result)
+
+if __name__ == "__main__":
+    main()
